@@ -34,6 +34,8 @@ X_train['t4minBGRxminHSV']=X_train['t4minBGRhist']*X_train['t4minHSVhist']
 
 print "fix the minimum, and work on scaling/interactions"
 
+
+'''
 rfc =RandomForestClassifier()
 
 
@@ -66,7 +68,7 @@ print("Top 100 Feature importance ranking:")
 for f in range(min(100,len(ab))):
     print ab[f]
 
-
+'''
 
 xgb_params = {
     'eta': 0.01,
@@ -80,13 +82,14 @@ xgb_params = {
     'silent': 1
 }
 
+'''
 dtrain = xgb.DMatrix(X_train, y_train)
 #dtest = xgb.DMatrix(X_test)
 
 cv_output = xgb.cv(xgb_params, dtrain, num_boost_round=10000, early_stopping_rounds=50,
     verbose_eval=50, metrics='auc',show_stdv=False)
 
-
+'''
 #Make a chart with a test-holdout
 
 from sklearn.model_selection import train_test_split
@@ -103,11 +106,42 @@ y_train = train2['invasive']
 xgtrain=xgb.DMatrix(X_train,label=y_train)
 xgmodel = xgb.train( xgb_params, xgtrain, num_boost_round=15000,verbose_eval=1, obj = None)
 
-y_pred = xgmodel.predict(X_test)
+y_pred = xgmodel.predict(xgb.DMatrix(X_test))
 
 from sklearn.metrics import roc_auc_score
 
 print roc_auc_score(test2['invasive'], y_pred)
+
+
+from sklearn import metrics
+
+fpr, tpr, thresholds = metrics.roc_curve(test2['invasive'], y_pred, pos_label=1)
+
+import numpy as np
+import matplotlib.pyplot as plt
+from itertools import cycle
+
+from sklearn import svm, datasets
+from sklearn.metrics import roc_curve, auc
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import label_binarize
+from sklearn.multiclass import OneVsRestClassifier
+from scipy import interp
+
+plt.figure()
+lw = 2
+plt.plot(fpr, tpr, color='darkorange',
+         lw=lw, label='ROC curve')
+plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic example')
+plt.legend(loc="lower right")
+plt.show()
+
+
 
 
 '''
