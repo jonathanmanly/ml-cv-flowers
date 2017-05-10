@@ -87,6 +87,28 @@ cv_output = xgb.cv(xgb_params, dtrain, num_boost_round=10000, early_stopping_rou
     verbose_eval=50, metrics='auc',show_stdv=False)
 
 
+#Make a chart with a test-holdout
+
+from sklearn.model_selection import train_test_split
+
+train2, test2 = train_test_split(df, test_size = 0.2)
+
+trainvars = df.columns[1:-1]
+X_train=train2[trainvars]
+X_test=test2[trainvars]
+y_train = train2['invasive']
+
+
+#xgtest=xgb.DMatrix(validation[trainvars],label=np.log(validation['SalePrice']))
+xgtrain=xgb.DMatrix(X_train,label=y_train)
+xgmodel = xgb.train( xgb_params, xgtrain, num_boost_round=15000,verbose_eval=1, obj = None)
+
+y_pred = xgmodel.predict(X_test)
+
+from sklearn.metrics import roc_auc_score
+
+print roc_auc_score(test2['invasive'], y_pred)
+
 
 '''
 y_pred = bestrfc.predict(X_test)
