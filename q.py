@@ -7,7 +7,7 @@ import pandas as pd
 
 hist_depth = 8
 stride=30
-num_templates =11
+num_templates =15#11
 
 
 templates = []
@@ -37,13 +37,17 @@ def getTemplateHists(img):
 
 
 
-alldata = []
 
-dataSources = {'train':2296,'test':1531}#2296 #1531
+
+dataSources = {'train':2296,'test':1532}#2297 #1532
 
 for d in ['train','test']:
+    alldata = []
     search_ind_max = dataSources[d]
-    for search_ind in range(1,search_ind_max):
+    search_range = range(1,search_ind_max)
+    if d=='train':
+        search_range = [x for x in search_range if x not in [3,90,167,226,833,1644]] #remove the pictures that templates came from
+    for search_ind in search_range:
         if search_ind<10 or search_ind%100==0:
             print d,search_ind
         thisData =[search_ind]
@@ -51,7 +55,7 @@ for d in ['train','test']:
         search = cv2.imread(filename)
         U = search.shape[0]/stride
         V= search.shape[1]/stride
-        results=np.zeros(((stride)**2,3))
+        results=np.zeros(((stride)**2,8))
         hsv_search = cv2.cvtColor(search,cv2.COLOR_BGR2HSV)
         search_grey = cv2.cvtColor(cv2.GaussianBlur(search,(5,5),1),cv2.COLOR_BGR2GRAY)
         for tnum in range(len(templates)):
@@ -70,7 +74,7 @@ for d in ['train','test']:
                         bigBlue[thisSlice[:,:,0]>200]=1
                         bigBlue[thisSlice[:,:,1]>150]=0
                         bigBlue[thisSlice[:,:,2]>150]=0
-                        results[y*stride+x,2]=bigBlue.sum()/bigBlue.size
+                        results[y*stride+x,6]=bigBlue.sum()/bigBlue.size
                     this_hsv_Slice = hsv_search[ y*U:(y+1)*U , x*V:(x+1)*V, :]
                     hist_slice = cv2.calcHist([thisSlice], [0,1,2], None, [hist_depth,hist_depth,hist_depth], [120, 255,120, 255,120, 255])
                     hist_hsv_slice = cv2.calcHist([this_hsv_Slice], [0,1], None, [hist_depth,hist_depth], [0,180,0,255])
@@ -86,15 +90,15 @@ for d in ['train','test']:
             thisData.append(len(np.where(results[:,1]<1.3)[0]))
             thisData.append(len(np.where(results[:,0]<2.5)[0]))
             thisData.append(len(np.where(results[:,1]<1.5)[0]))
-        thisData.append(results[:,2].max())
+        thisData.append(results[:,6].max())
         alldata.append(thisData)
 
 
         df = pd.DataFrame(alldata)
         varnames =['img_num']
         for i in range(1,num_templates+1):
-            varnames.append("t"+str(i)+"minmatch")
-            varnames.append("t"+str(i)+"meannmatch")
+            varnames.append("t"+str(i)+"minmatchEucRGB")
+            varnames.append("t"+str(i)+"minmatchEucHSV")
             varnames.append("t"+str(i)+"threshnmatch")
             varnames.append("t"+str(i)+"minBGRhist")
             varnames.append("t"+str(i)+"minHSVhist")

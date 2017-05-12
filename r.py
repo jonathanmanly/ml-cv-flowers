@@ -7,14 +7,27 @@ import numpy as np
 import xgboost as xgb
 
 df=pd.read_csv("trainphoto_features.csv")
+score=pd.read_csv("testphoto_features.csv")
 labels=pd.read_csv("train_labels.csv")
 
 
 labels = labels.set_index(labels['name'])
 
 df= df.set_index(df['img_num'])
-
+score= score.set_index(score['img_num'])
 df=df.drop('img_num.1',axis=1)
+score= score.drop('img_num.1',axis=1)
+
+
+#df['veryBluePropAll']=1*(df['veryBlueProp']>.55)
+#score['veryBluePropAll']=1*(score['veryBlueProp']>.55)
+#df['veryBluePropSq']=df['veryBlueProp']**2
+#df['veryBluePropLn']=np.log1p(df['veryBlueProp'])
+#score['veryBluePropSq']=score['veryBlueProp']**2
+#score['veryBluePropLn']=np.log1p(score['veryBlueProp'])
+
+#score= score.drop('veryBlueProp',axis=1)
+#df= df.drop('veryBlueProp',axis=1)
 
 df= pd.merge(df, labels, how='left', left_on=['img_num'], right_on=['name'])
 
@@ -23,19 +36,20 @@ y_train = df['invasive']
 
 trainvars = df.columns[1:-1]
 X_train=df[trainvars]
+X_score = score[trainvars]
 #X_train['ln_t4minBGRhist']=np.log1p(X_train['t4minBGRhist'])
-X_train['bestBGRmin']=np.min((X_train['t11minBGRhist'],X_train['t10minBGRhist'],X_train['t9minBGRhist'],X_train['t8minBGRhist'],X_train['t7minBGRhist'],X_train['t6minBGRhist'],X_train['t4minBGRhist'],X_train['t1minBGRhist'],X_train['t2minBGRhist'],X_train['t3minBGRhist'],X_train['t5minBGRhist']))
-X_train['avgBGRmin']=np.mean((X_train['t11minBGRhist'],X_train['t10minBGRhist'],X_train['t9minBGRhist'],X_train['t8minBGRhist'],X_train['t7minBGRhist'],X_train['t6minBGRhist'],X_train['t4minBGRhist'],X_train['t1minBGRhist'],X_train['t2minBGRhist'],X_train['t3minBGRhist'],X_train['t5minBGRhist']))
-X_train['worstBGRmin']=np.max((X_train['t11minBGRhist'],X_train['t10minBGRhist'],X_train['t9minBGRhist'],X_train['t8minBGRhist'],X_train['t7minBGRhist'],X_train['t6minBGRhist'],X_train['t4minBGRhist'],X_train['t1minBGRhist'],X_train['t2minBGRhist'],X_train['t3minBGRhist'],X_train['t5minBGRhist']))
+#X_train['bestBGRmin']=np.min((X_train['t11minBGRhist'],X_train['t10minBGRhist'],X_train['t9minBGRhist'],X_train['t8minBGRhist'],X_train['t7minBGRhist'],X_train['t6minBGRhist'],X_train['t4minBGRhist'],X_train['t1minBGRhist'],X_train['t2minBGRhist'],X_train['t3minBGRhist'],X_train['t5minBGRhist']))
+#X_train['avgBGRmin']=np.mean((X_train['t11minBGRhist'],X_train['t10minBGRhist'],X_train['t9minBGRhist'],X_train['t8minBGRhist'],X_train['t7minBGRhist'],X_train['t6minBGRhist'],X_train['t4minBGRhist'],X_train['t1minBGRhist'],X_train['t2minBGRhist'],X_train['t3minBGRhist'],X_train['t5minBGRhist']))
+#X_train['worstBGRmin']=np.max((X_train['t11minBGRhist'],X_train['t10minBGRhist'],X_train['t9minBGRhist'],X_train['t8minBGRhist'],X_train['t7minBGRhist'],X_train['t6minBGRhist'],X_train['t4minBGRhist'],X_train['t1minBGRhist'],X_train['t2minBGRhist'],X_train['t3minBGRhist'],X_train['t5minBGRhist']))
 
-X_train['t4minBGRxminHSV']=X_train['t4minBGRhist']*X_train['t4minHSVhist']
+#X_train['t4minBGRxminHSV']=X_train['t4minBGRhist']*X_train['t4minHSVhist']
 
 #scaler = StandardScaler()
 
-print "fix the minimum, and work on scaling/interactions"
+#print "fix the minimum, and work on scaling/interactions"
 
 
-'''
+
 rfc =RandomForestClassifier()
 
 
@@ -68,28 +82,30 @@ print("Top 100 Feature importance ranking:")
 for f in range(min(100,len(ab))):
     print ab[f]
 
-'''
+
 
 xgb_params = {
-    'eta': 0.01,
+    'eta': 0.01,#1
     'min_child_weight':1,
-    'max_depth': 7,
-    'subsample': 0.9,
-    'colsample_bytree': 0.9,
+    'max_depth': 5,#6
+    'subsample': 0.65,#.65
+    'colsample_bytree': 0.8,#75
     'objective': 'binary:logistic',
-    'reg_alpha':.0,
-    'reg_lambda':.01,
+    'reg_alpha':.05,#05
+    'reg_lambda':.1,
     'silent': 1
 }
 
-'''
+
 dtrain = xgb.DMatrix(X_train, y_train)
-#dtest = xgb.DMatrix(X_test)
+
+
 
 cv_output = xgb.cv(xgb_params, dtrain, num_boost_round=10000, early_stopping_rounds=50,
     verbose_eval=50, metrics='auc',show_stdv=False)
 
-'''
+
+
 #Make a chart with a test-holdout
 
 from sklearn.model_selection import train_test_split
@@ -105,8 +121,25 @@ y_train = train2['invasive']
 #xgtest=xgb.DMatrix(validation[trainvars],label=np.log(validation['SalePrice']))
 xgtrain=xgb.DMatrix(X_train,label=y_train)
 xgmodel = xgb.train( xgb_params, xgtrain, num_boost_round=15000,verbose_eval=1, obj = None)
+xgmodel_full = xgb.train( xgb_params, dtrain, num_boost_round=15000,verbose_eval=1, obj = None)
+
+y_pred_score  = xgmodel_full.predict(xgb.DMatrix(X_score))
+
+score_df = pd.DataFrame(y_pred_score,index=X_score.index)
+score_df.index.names = ['name']
+
+
+score_df.to_csv("score_out3.csv",header=['invasive'])
+
+
+
+
 
 y_pred = xgmodel.predict(xgb.DMatrix(X_test))
+
+y_pred_diff = y_pred - test2['invasive']
+
+print y_pred_diff[np.abs(y_pred_diff)>.8]
 
 from sklearn.metrics import roc_auc_score
 
@@ -141,10 +174,10 @@ plt.title('Receiver operating characteristic example')
 plt.legend(loc="lower right")
 plt.show()
 
-
-
-
 '''
+
+
+
 y_pred = bestrfc.predict(X_test)
 
 y_pred[y_pred<0]=0
