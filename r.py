@@ -87,11 +87,11 @@ for f in range(min(100,len(ab))):
 xgb_params = {
     'eta': 0.009,#1
     'min_child_weight':1,
-    'max_depth': 5,#6
+    'max_depth': 5,#
     'subsample': 0.65,#.65
-    'colsample_bytree': 0.8,#75
+    'colsample_bytree': 0.8,#8
     'objective': 'binary:logistic',
-    'reg_alpha':.20,#05
+    'reg_alpha':.25,#20
     'reg_lambda':.1,
     'silent': 1
 }
