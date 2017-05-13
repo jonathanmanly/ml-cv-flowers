@@ -85,13 +85,13 @@ for f in range(min(100,len(ab))):
 
 
 xgb_params = {
-    'eta': 0.01,#1
+    'eta': 0.009,#1
     'min_child_weight':1,
     'max_depth': 5,#6
     'subsample': 0.65,#.65
     'colsample_bytree': 0.8,#75
     'objective': 'binary:logistic',
-    'reg_alpha':.05,#05
+    'reg_alpha':.20,#05
     'reg_lambda':.1,
     'silent': 1
 }
@@ -129,10 +129,16 @@ score_df = pd.DataFrame(y_pred_score,index=X_score.index)
 score_df.index.names = ['name']
 
 
-score_df.to_csv("score_out3.csv",header=['invasive'])
+score_df.to_csv("score_out4.csv",header=['invasive'])
 
 
 
+try:
+    d= xgmodel.get_fscore()
+    for w in sorted(d, key=d.get, reverse=True):
+        print w, d[w]
+except:
+    print "no fscore"
 
 
 y_pred = xgmodel.predict(xgb.DMatrix(X_test))

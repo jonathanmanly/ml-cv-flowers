@@ -6,8 +6,8 @@ import pandas as pd
 
 
 hist_depth = 8
-stride=30
-num_templates =15#11
+stride=60#30
+num_templates =18#11
 
 
 templates = []
@@ -26,6 +26,17 @@ for t in templates:
 
 
 
+humoments = []
+
+for t in greyBlurredTemplates:
+    edges = cv2.Canny(t,100,200)
+    humo = cv2.HuMoments(cv2.moments(edges)).flatten()
+    humo = humo/humo.max()
+    humoments.append(humo)
+
+
+
+
 def getTemplateHists(img):
     hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
     hist_img = cv2.calcHist([img], [0,1,2], None, [hist_depth,hist_depth,hist_depth], [120, 255,120,255,120,255])
@@ -39,14 +50,14 @@ def getTemplateHists(img):
 
 
 
-dataSources = {'train':2296,'test':1532}#2297 #1532
+dataSources = {'train':2296,'test':1532}#2296 #1532
 
-for d in ['train','test']:
+for d in ['test']:
     alldata = []
     search_ind_max = dataSources[d]
     search_range = range(1,search_ind_max)
     if d=='train':
-        search_range = [x for x in search_range if x not in [3,90,167,226,833,1644]] #remove the pictures that templates came from
+        search_range = [x for x in search_range if x not in [3,90,167,226,833,1644,1707,1561]] #remove the pictures that templates came from
     for search_ind in search_range:
         if search_ind<10 or search_ind%100==0:
             print d,search_ind
@@ -61,6 +72,7 @@ for d in ['train','test']:
         for tnum in range(len(templates)):
             t=templates[tnum]
             grey = greyBlurredTemplates[tnum]
+            hu_template = humoments[tnum]
             matching = cv2.matchTemplate(search_grey,grey,cv2.TM_SQDIFF_NORMED)
             thisData.append(matching.min())
             thisData.append(matching.mean())
@@ -69,6 +81,12 @@ for d in ['train','test']:
             for y in range(stride):
                 for x in range(stride):
                     thisSlice = search[ y*U:(y+1)*U , x*V:(x+1)*V, :]
+                    huSlice = search_grey[ y*U:(y+1)*U , x*V:(x+1)*V]
+                    sliceHuMo = cv2.HuMoments(cv2.moments(cv2.Canny(huSlice,100,200))).flatten()
+                    if sliceHuMo.sum()>0:
+                        sliceHuMo= sliceHuMo/sliceHuMo.max()
+                    huDist = distance.euclidean(sliceHuMo,hu_template)
+                    results[y*stride+x,3]=huDist
                     if tnum==1:
                         bigBlue = np.zeros((thisSlice.shape[0],thisSlice.shape[1]))
                         bigBlue[thisSlice[:,:,0]>200]=1
@@ -90,6 +108,7 @@ for d in ['train','test']:
             thisData.append(len(np.where(results[:,1]<1.3)[0]))
             thisData.append(len(np.where(results[:,0]<2.5)[0]))
             thisData.append(len(np.where(results[:,1]<1.5)[0]))
+            thisData.append(results[:,3].min())
         thisData.append(results[:,6].max())
         alldata.append(thisData)
 
@@ -106,7 +125,7 @@ for d in ['train','test']:
             varnames.append("t"+str(i)+"threshHSVhist")
             varnames.append("t"+str(i)+"threshBGRhist2")
             varnames.append("t"+str(i)+"threshHSVhist2")
-
+            varnames.append("t"+str(i)+"huDist")
         varnames.append("veryBlueProp")
         df.columns = varnames
         df.index = df['img_num']
