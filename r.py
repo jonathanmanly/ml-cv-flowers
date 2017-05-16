@@ -6,10 +6,12 @@ from sklearn.model_selection import GridSearchCV
 import numpy as np
 import xgboost as xgb
 
+
+#Load the feature data from the prior step
+
 df=pd.read_csv("trainphoto_features.csv")
 score=pd.read_csv("testphoto_features.csv")
 labels=pd.read_csv("train_labels.csv")
-
 
 labels = labels.set_index(labels['name'])
 
@@ -18,16 +20,15 @@ score= score.set_index(score['img_num'])
 df=df.drop('img_num.1',axis=1)
 score= score.drop('img_num.1',axis=1)
 
+huVars = [x for x in df.columns if 'hu' in x]
+#hsvVars = [x for x in df.columns if 'HSV' in x]
 
-#df['veryBluePropAll']=1*(df['veryBlueProp']>.55)
-#score['veryBluePropAll']=1*(score['veryBlueProp']>.55)
-#df['veryBluePropSq']=df['veryBlueProp']**2
-#df['veryBluePropLn']=np.log1p(df['veryBlueProp'])
-#score['veryBluePropSq']=score['veryBlueProp']**2
-#score['veryBluePropLn']=np.log1p(score['veryBlueProp'])
-
-#score= score.drop('veryBlueProp',axis=1)
-#df= df.drop('veryBlueProp',axis=1)
+print "before",df.shape
+score = score.drop(huVars,axis=1)
+df = df.drop(huVars,axis=1)
+#score = score.drop(hsvVars,axis=1)
+#df = df.drop(hsvVars,axis=1)
+print "after",df.shape
 
 df= pd.merge(df, labels, how='left', left_on=['img_num'], right_on=['name'])
 
@@ -101,7 +102,7 @@ dtrain = xgb.DMatrix(X_train, y_train)
 
 
 
-cv_output = xgb.cv(xgb_params, dtrain, num_boost_round=10000, early_stopping_rounds=50,
+cv_output = xgb.cv(xgb_params, dtrain, num_boost_round=10000, early_stopping_rounds=20,
     verbose_eval=50, metrics='auc',show_stdv=False)
 
 
@@ -110,7 +111,7 @@ cv_output = xgb.cv(xgb_params, dtrain, num_boost_round=10000, early_stopping_rou
 
 from sklearn.model_selection import train_test_split
 
-train2, test2 = train_test_split(df, test_size = 0.2)
+train2, test2 = train_test_split(df, test_size = 0.2,random_state=200)
 
 trainvars = df.columns[1:-1]
 X_train=train2[trainvars]
@@ -120,8 +121,8 @@ y_train = train2['invasive']
 
 #xgtest=xgb.DMatrix(validation[trainvars],label=np.log(validation['SalePrice']))
 xgtrain=xgb.DMatrix(X_train,label=y_train)
-xgmodel = xgb.train( xgb_params, xgtrain, num_boost_round=15000,verbose_eval=1, obj = None)
-xgmodel_full = xgb.train( xgb_params, dtrain, num_boost_round=15000,verbose_eval=1, obj = None)
+xgmodel = xgb.train( xgb_params, xgtrain, num_boost_round=1100,verbose_eval=1, obj = None)
+xgmodel_full = xgb.train( xgb_params, dtrain, num_boost_round=1100,verbose_eval=1, obj = None)
 
 y_pred_score  = xgmodel_full.predict(xgb.DMatrix(X_score))
 
@@ -148,11 +149,24 @@ y_pred_diff = y_pred - test2['invasive']
 print y_pred_diff[np.abs(y_pred_diff)>.8]
 
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
 
 print roc_auc_score(test2['invasive'], y_pred)
 
+z=y_pred.copy()
+z[z>.5]=1
+z[z<=.5]=0
+
+print "acc score",accuracy_score(test2['invasive'], z)
+
+print "acc score, no normalize",accuracy_score(test2['invasive'], z,normalize=False)
+
+print confusion_matrix(test2['invasive'],z)
+
 
 from sklearn import metrics
+
 
 fpr, tpr, thresholds = metrics.roc_curve(test2['invasive'], y_pred, pos_label=1)
 
@@ -176,8 +190,9 @@ plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-plt.title('Receiver operating characteristic example')
+plt.title('Receiver operating characteristic')
 plt.legend(loc="lower right")
+plt.savefig("roc_chart.png")
 plt.show()
 
 '''
@@ -191,5 +206,4 @@ y_pred[y_pred<0]=0
 print "rf rmsle",rmsle(np.exp(np.array(y_test)),np.exp(np.array(y_pred)))
 
 pred_rf = bestrfc.predict(X_score)
-
 '''
